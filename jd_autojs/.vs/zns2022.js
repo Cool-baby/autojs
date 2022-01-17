@@ -21,8 +21,6 @@ var isXcx = false;
 var huodong_indexInParent_num = 9;
 // 记录活动页面头部坐标
 var headerXY;
-var ruhui_enable = 0
-var ruhui_errtime = 0
 var AppType = 0; //1: 京东APP  2:京东金融
 /**
  * 启动京东app
@@ -41,6 +39,22 @@ function start()
 }
 start();
 sleep(3000);
+
+
+/**
+ * 关键调用在此
+ */
+ while (true) {
+
+    enterActivity();//进入做任务界面，防走丢
+
+    recoverApp();//检测是否卡顿
+
+    var flag = getNeedSelector();//找任务
+
+    if(viewTask(flag) == 0)
+        viewProduct();
+}
 
 
 /**
@@ -82,6 +96,7 @@ function enterActivity()
                 var huodong = desc("浮层活动").findOne().bounds();
                 randomClick(huodong.centerX(), huodong.centerY());
                 sleep(500);
+                //点两次，防止浮层缩进去，然后无法进入活动界面
                 if (desc("浮层活动").exists()) 
                 {
                     console.info("点击浮层活动");
@@ -104,7 +119,7 @@ function enterActivity()
                 //console.info(rect)
                 //console.info(rect.centerX(), rect.centerY())
                 randomClick(946, 1525);//此处我根据荣耀v20找的点
-                sleep(500);
+                sleep(1000);
                 headerXY = id("a96").findOne().bounds();
             } 
             else 
@@ -131,111 +146,45 @@ function enterActivity()
 
 
 /**
- * 关键调用在此
- */
-while (true) {
-
-    enterActivity();//进入做任务界面，防走丢
-
-    recoverApp();//检测是否卡顿
-
-    var flag = getNeedSelector();//找任务
-
-    if(viewTask(flag) == 0)
-        addMarketCar();//加购物车
- 
-
-}
-
-
-/**
  * 获取需要进行的控件
  * @returns
  */
- function getNeedSelector() {
-    sleep(2000)
-     
-    try{
+function getNeedSelector() {
+    var allSelector = className('android.view.View')
+    .depth(19)
+    .indexInParent(3)
+    .drawingOrder(0)
+    .clickable()
+    .find();
 
-        {
-            // console.info("判断是否是金融")
-            allSelector = textContains("每邀1个好友").findOne()
-            console.info(allSelector.text())
-            allSelector = allSelector.parent()
-            allSelector = allSelector.parent()
-            allSelector = allSelector.children()
-            console.info(allSelector.length)
- 
-            for (let index = 0; index < allSelector.length - 1; index++) {
-                for (var i = 0; i < TASK_LIST.length; i++) {
-                    // if(AppType == 0)
-                    // {
-                    //     AppType = 2; //标记为京东金融APP
-                    //     console.info("京东金融")
-                    // }
-                    // 获取具有需要完成任务字符串的控件集合
-                    lab = allSelector[index].children()[2].text()
- 
-                    var list = allSelector[index].children()[2].findByText(TASK_LIST[i]);
-                    // 如果长度大于0则表示存在该控件
-                    if (list.size() > 0) {
-                        // 获取不在序列中的序号
-                        if (finished_task_num.indexOf(index) < 0) {
-                            console.info("当前已完成序列：", finished_task_num)
-                            current_task_num = index;
-                        } else {
-                            continue;
-                        }
-         
-                        // 如果是浏览就返回的任务，将标记设为true
-                        isBackFlag = (TASK_LIST[i].indexOf("浏览可得") >= 0 || TASK_LIST[i].indexOf("浏览并关注可得") >= 0 || TASK_LIST[i].indexOf("浏览领") >= 0 ) ? true : false;
-                        // 如果是小程序任务，将小程序标记设为true
-                        isXcx = (TASK_LIST[i].indexOf("小程序") >= 0) ? true : false;
-                        var rect = allSelector[index].children()[3].bounds();
-                        if (textContains("当前进度").exists()) {
-                            console.info("去完成任务，当前任务序列：", current_task_num,TASK_LIST[i])
-                            if(TASK_LIST[i] == "浏览可得")
-                            {
-                                console.info("看下就回来")
-                                isBackFlag = true;
-                            }
-                            randomClick(rect.centerX(), rect.centerY());
-                            sleep(1000)
- 
-                            if (TASK_LIST[i].indexOf("早起") >= 0){
-                                log("早上好！！那么早就跑脚本")
-                                break;
-                            }
-                             
-                            for(i = 0; i < 5; i++)
-                            {
-                                if (textContains("当前进度").exists()) {
-                                    log("点了没反应？我再点！")
-                                    sleep(2000)
-                                    randomClick(rect.centerX(), rect.centerY());
-                                }else{
-                                    //console.info("开始任务:", allSelector[current_task_num].parent().findByText(TASK_LIST[i]).get(0).text());
-                                    return true;
-                                }
-                            }
-                            //试了那么多次，屏蔽了这个任务吧
-                            if (textContains("当前进度").exists()) {
-                                finished_task_num[finished_task_num.length] = current_task_num;
-                                log("任务没有跳转，应该任务完成了，屏蔽当前任务序列，如果是误操作，请结束后重新运行脚本")
-                                break;
-                            }
-                    }
-                    }
-                }
+for (let index = 0; index < allSelector.length; index++) {
+    for (var i = 0; i < TASK_LIST.length; i++) {
+        // 获取具有需要完成任务字符串的控件集合
+        var list = allSelector[index].parent().findByText(TASK_LIST[i]);
+        // 如果长度大于0则表示存在该控件
+        if (list.size() > 0) {
+            // 获取不在序列中的序号
+            if (finished_task_num.indexOf(index) < 0) {
+                console.info("当前已完成序列：", finished_task_num)
+                current_task_num = index;
+            } else {
+                continue;
             }
-            console.log("完成")
- 
+
+            // 如果是浏览就返回的任务，将标记设为true
+            isBackFlag = (TASK_LIST[i].indexOf("浏览可得") >= 0 || TASK_LIST[i].indexOf("浏览并关注可得2000") >= 0 || TASK_LIST[i].indexOf("玩AR游戏可得") >= 0) ? true : false;
+            // 如果是小程序任务，将小程序标记设为true
+            isXcx = (TASK_LIST[i].indexOf("小程序") >= 0) ? true : false;
+            var rect = allSelector[current_task_num].bounds();
+            if (text("累计任务奖励").exists()) {
+                console.info("去完成任务，当前任务序列：", current_task_num)
+                randomClick(rect.centerX(), rect.centerY());
+                //console.info("开始任务:", allSelector[current_task_num].parent().findByText(TASK_LIST[i]).get(0).text());
+                return true;
+            }
         }
-         
-    }catch(e){
-        log("getNeedSelector")
-        log(e)
     }
+}
 }
 
 
@@ -310,18 +259,17 @@ while (true) {
             JUDGE_TIME = 0;
             res = 1;
             break;
+        }  else if (textContains('当前页点击浏览4个').exists() || textContains('当前页浏览加购').exists()
+        || textContains('当前页点击浏览4个商品领爆竹').exists() || textContains('当前页浏览加购4个商品领爆竹').exists()) {
+        console.info("当前为加入购物车任务或浏览商品任务");
+        // 重置计时
+        JUDGE_TIME = 0;
+        break;
         } else if (textContains('会员授权协议').exists()) {
-            if(ruhui())
-            {   //如果入会失败，则不再入会
-                // 将当前任务序号添加到列表中，防止后续点到
-                finished_task_num[finished_task_num.length] = current_task_num;
-            }
+            console.info("不加会员，切换已完成");
+            // 将当前任务序号添加到列表中，防止后续点到
+            finished_task_num[finished_task_num.length] = current_task_num;
             viewAndFollow();
-            // 重置计时
-            JUDGE_TIME = 0;
-            break;
-        } else if (textContains('当前页点击浏览4个').exists() || textContains('当前页浏览加购').exists()) {
-            console.info("当前为加入购物车任务");
             // 重置计时
             JUDGE_TIME = 0;
             break;
@@ -436,37 +384,30 @@ while (true) {
 
 
 /**
- * 加入购物车
+ * 浏览商品+加购商品
  */
- function addMarketCar() {
-    if (textContains('当前页点击浏览4个').exists() || textContains('当前页浏览加购').exists()) {
-        console.info("在加购页面");
-        // for(idx = 0; idx < 10; idx++)
-        // {
-        //     console.info("i:" + idx);
-        const productList = textContains('￥').find()
-        console.info(productList.length);
-        // }
-        //const productList = className('android.widget.Button').depth(19).clickable().find()
+ function viewProduct() {
+    if (textContains('当前页点击浏览4个商品领爆竹').exists() || textContains('当前页浏览加购4个商品领爆竹').exists()) {
+        log("当前页点击浏览或加购4个商品领爆竹");
+        const productList = className('android.view.View').depth(15).indexInParent(4).clickable(true).find();
         var count = 0;
         for (index = 0; index < productList.length; index++) {
-            if (count >= 4) {
+            if (count == 4) {
                 if (back()) {
                     sleep(3000)
-                    count = 0;
                     break;
                 }
             }
-            if (productList[index].parent().parent().children()[4].click()) {
+            if (productList[index].click()) {
                 // 重置计时
                 JUDGE_TIME = 0;
-                log("加购浏览任务:正在添加第" + (index + 1) + "个商品");
+                log("浏览商品任务:正在浏览第" + (index + 1) + "个商品");
                 sleep(2000);
                 while (true) {
-                    if (back()) {
+                    if (text("购物车").exists() && back()) {
                         count = count + 1;
                         sleep(2000);
-                        if (textContains("当前页").exists()) {
+                        if (!text("购物车").exists()) {
                             break;
                         }
                     }
@@ -474,7 +415,6 @@ while (true) {
             }
         }
     }
- 
 }
 
 
@@ -485,7 +425,6 @@ while (true) {
         if(text("浏览并关注8s可得8000爆竹").exists() || text("浏览8s可得8000爆竹").exists()) 
         {
             console.info("存在可浏览任务")
-
         }
         else
         {
