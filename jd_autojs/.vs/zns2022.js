@@ -1,7 +1,14 @@
+/**
+ * 2022京东炸年兽活动AutoJS辅助
+ * Author：Hao
+ * Data：2022/1/20
+ * Versions: 3.1
+ * GitHub:https://github.com/Cool-baby/autojs
+ */
 //京东app名
 var appName = "com.jingdong.app.mall";
 // 需要完成的任务列表
-var TASK_LIST = ["浏览领", "浏览并关注8s", "城城", "浏览8秒", "浏览8s", "累计浏览", "浏览并关注可得2000", "浏览可得", "入会", "浏览并关注可得", "去首页浮层进入", "小程序", "浏览5个品牌墙店铺", "浏览活动", "品牌墙店铺", "逛晚会页", "玩AR游戏可得", "去组队可得"];
+var TASK_LIST = ["浏览领", "浏览并关注8s", "城城", "浏览8秒", "浏览8s", "累计浏览", "浏览并关注可得2000", "浏览可得", "入会", "浏览并关注可得", "去首页浮层进入", "小程序", "浏览5个品牌墙店铺", "浏览活动", "品牌墙店铺", "逛晚会页", "玩AR游戏可得", "去组队可得","下单商品可得"];
 // 过渡操作
 var PASS_LIST = ['请选择要使用的应用', '我知道了', '取消', "京口令已复制"];
 // 判断停留时间
@@ -20,6 +27,10 @@ var isXcx = false;
 var huodong_indexInParent_num = 9;
 // 记录活动页面头部坐标
 var headerXY;
+// 记录是否没任务做了
+var check_flag;
+// 品牌墙任务标记
+var isBackgroud = false;
 
 
 /**
@@ -34,17 +45,20 @@ function start()
         console.info("时间:2022-1-19");
         console.info("GitHub:https://github.com/Cool-baby")
         console.info("启动京东APP");
+        console.info("注意：第一次打开JD可能会弹窗，需配合手动关闭影响任务进行的弹窗！");
     }
     console.show();
 }
 start();
-sleep(3000);
+sleep(5000);
 
 
 /**
  * 关键调用在此
  */
  while (true) {
+
+    check_flag = 0;
 
     enterActivity();//进入做任务界面，防走丢
 
@@ -55,9 +69,14 @@ sleep(3000);
     if(viewTask(flag) == 0)
         if(viewProduct())
         {
-            console.info("我滴任务完成啦！");
-            //break;
+            check_flag = 1;
         }
+
+    if((check_flag == 1) && (flag != true))
+    {
+        console.info("我滴任务完成啦！");
+        //break;
+    }
 }
 
 
@@ -99,14 +118,14 @@ function enterActivity()
                 console.info("点击浮层活动");
                 var huodong = desc("浮层活动").findOne().bounds();
                 randomClick(huodong.centerX(), huodong.centerY());
-                sleep(500);
+                sleep(2500);
                 //点两次，防止浮层缩进去，然后无法进入活动界面
                 if (desc("浮层活动").exists()) 
                 {
                     console.info("点击浮层活动");
                     var huodong = desc("浮层活动").findOne().bounds();
                     randomClick(huodong.centerX(), huodong.centerY());
-                    sleep(1500);
+                    sleep(3000);
                 }
             }
             
@@ -185,9 +204,11 @@ for (let index = 0; index < allSelector.length; index++)
             }
 
             // 如果是浏览就返回的任务，将标记设为true
-            isBackFlag = (TASK_LIST[i].indexOf("浏览可得") >= 0 || TASK_LIST[i].indexOf("浏览并关注可得2000") >= 0 || TASK_LIST[i].indexOf("玩AR游戏可得") >= 0 || TASK_LIST[i].indexOf("去组队可得") >= 0) ? true : false;
+            isBackFlag = (TASK_LIST[i].indexOf("浏览可得") >= 0 || TASK_LIST[i].indexOf("浏览并关注可得") >= 0 || TASK_LIST[i].indexOf("玩AR游戏可得") >= 0 || TASK_LIST[i].indexOf("去组队可得") >= 0) ? true : false;
             // 如果是小程序任务，将小程序标记设为true
             isXcx = (TASK_LIST[i].indexOf("小程序") >= 0) ? true : false;
+            // 如果是品牌墙任务，将背景墙任务标记为true
+            isBackgroud = (TASK_LIST[i].indexOf("品牌墙") >= 0) ? true : false;
             var rect = allSelector[current_task_num].bounds();
             if (text("累计任务奖励").exists()) {
                 console.info("去完成任务，当前任务序列：", current_task_num)
@@ -220,7 +241,6 @@ for (let index = 0; index < allSelector.length; index++)
             console.info("结束时间:" + timenow)
             break;
         }
-         
         if (text("天天都能领").exists() || text("有机会得大额现金").exists() || text("邀请新朋友 更快赚现金").exists()) {
             console.info("进入城城领现金");
             console.info("城城分现金已结束");
@@ -259,7 +279,7 @@ for (let index = 0; index < allSelector.length; index++)
         JUDGE_TIME = 0;
         break;
         } 
-        else if (textContains('会员授权协议').exists()) 
+        else if (textContains('会员授权协议').exists() || textContains('会员福利专享').exists()) 
         {
             console.info("不加会员，切换已完成");
             // 将当前任务序号添加到列表中，防止后续点到
@@ -279,6 +299,16 @@ for (let index = 0; index < allSelector.length; index++)
             JUDGE_TIME = 0;
             break;
         }
+        else if (textContains('￥').exists() || textContains('好货特卖').exists()) 
+        {
+            console.info("不买东西，切换已完成");
+            // 将当前任务序号添加到列表中，防止后续点到
+            finished_task_num[finished_task_num.length] = current_task_num;
+            viewAndFollow();
+            // 重置计时
+            JUDGE_TIME = 0;
+            break;
+        }
         else if (text("互动种草城").exists()) 
         {
             console.info("当前为互动种草城任务");
@@ -291,7 +321,7 @@ for (let index = 0; index < allSelector.length; index++)
             }
             break;
         } 
-        else if (text("到底了，没有更多了～").exists() && !text("消息").exists() && !text("扫啊扫").exists() && !(textStartsWith("当前进度").exists() && textEndsWith("10").exists())) 
+        else if ((text("到底了，没有更多了～").exists() && !text("消息").exists() && !text("扫啊扫").exists() && !(textStartsWith("当前进度").exists() && textEndsWith("10").exists())) || isBackgroud)
         {
             console.info("到底了，没有更多了～");
             sleep(1000);
@@ -302,13 +332,15 @@ for (let index = 0; index < allSelector.length; index++)
                 if (undefined === headerXY) {
                     headerXY = id("a96").findOne().bounds();
                 }
-                var rightx = headerXY.right;
-                var righty = headerXY.bottom + 300;
+                // var rightx = headerXY.right;
+                // var righty = headerXY.bottom + 300;
+                var rightx = 180;
+                var righty = 1540;
                 while (click(rightx, righty)) {
                     console.info("尝试点击坐标：", rightx, righty);
                     count = count + 1;
                     sleep(6000);
-                    if (!text("到底了，没有更多了～").exists()) {
+                    if (!text("下拉有惊喜").exists()) {
                         if (id("aqw").click()) {
                             sleep(2000);
                             console.info("尝试返回", count);
@@ -316,13 +348,14 @@ for (let index = 0; index < allSelector.length; index++)
                             break;
                         }
                     } else {
-                        righty = righty + 50;
+                        righty = righty + 237;
                     }
-                    if(righty >= 1600) {
+                    if(righty >= 900) {
                         break;
                     }
                 }
             }
+            isBackgroud = false;
             swipe(807, 314, 807, 414, 1);
             sleep(2000);
             break;
@@ -404,9 +437,9 @@ for (let index = 0; index < allSelector.length; index++)
  * 浏览商品/加购商品
  * 实现效果类似，固只需一个方法
  */
- function viewProduct() 
+function viewProduct() 
  {
-    var check_flag = 1;
+    var viewProductFlag = 1;
     if (textContains('当前页点击浏览4个商品领爆竹').exists() || textContains('当前页浏览加购4个商品领爆竹').exists()) 
     {
         log("当前页点击浏览或加购4个商品领爆竹");
@@ -432,8 +465,8 @@ for (let index = 0; index < allSelector.length; index++)
                 {
                     if (text("购物车").exists() && back()) 
                     {
+                        viewProductFlag = 0;
                         count = count + 1;
-                        check_flag = 0;
                         sleep(2000);
                         if (!text("购物车").exists()) 
                         {
@@ -444,7 +477,8 @@ for (let index = 0; index < allSelector.length; index++)
             }
         }
     }
-    if(check_flag)
+    //console.info("viewProductFlag:",viewProductFlag);
+    if(viewProductFlag)
     {
         return true;
     }
@@ -472,6 +506,30 @@ for (let index = 0; index < allSelector.length; index++)
     {
         return false;
     }
+}
+
+
+/**
+ * 互动种草城
+ */
+ function interactionGrassPlanting() {
+    var count = 0;
+    while (true) {
+        if (className('android.view.View').indexInParent(4).depth(14).findOne().click()) {
+            // 重置计时
+            JUDGE_TIME = 0;
+            console.info("去逛逛");
+            sleep(2000);
+            if (back()) {
+                sleep(2000);
+                count = count + 1;
+                if (count == 5) {
+                    return true;
+                }
+            }
+        }
+    }
+
 }
 
 
